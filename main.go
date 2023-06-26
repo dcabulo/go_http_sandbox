@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/dcabulo/rssagg/internal/database"
 	"github.com/go-chi/chi"
@@ -38,8 +39,10 @@ func main() {
 		log.Fatal("Can't connect to database:", err)
 	}
 
+	dbQueries := database.New(conn)
+
 	apiCfg := apiConfig{
-		DB: database.New(conn),
+		DB: dbQueries,
 	}
 
 	router := chi.NewRouter()
@@ -72,6 +75,10 @@ func main() {
 		Handler: router,
 		Addr:    ":" + portString,
 	}
+
+	const collectionConcurrency = 10
+	const collectionInterval = time.Minute
+	go startScraping(dbQueries, collectionConcurrency, collectionInterval)
 
 	log.Printf("Server starting on port %v", portString)
 	srv.ListenAndServe()
